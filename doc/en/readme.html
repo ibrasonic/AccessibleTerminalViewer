@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>AccessibleTerminalViewer</title>
+</head>
+<body>
+	<h1>AccessibleTerminalViewer</h1>
+	<p>
+		AccessibleTerminalViewer presents the currently focused terminal as a structured
+		browse-mode document. It supports Command Prompt, Windows PowerShell,
+		PowerShell, and Windows Terminal.
+	</p>
+	<p>Author: Ibrahim Badawy. Last tested with NVDA 2026.3.1.</p>
+	<h2>Opening the view</h2>
+	<p>
+		Place focus in a supported terminal and press NVDA+Shift+V. A browsable
+		document opens containing the terminal text available through Windows
+		accessibility APIs.
+	</p>
+	<h2>Navigation</h2>
+	<ul>
+		<li>Press H or Shift+H to move between command prompt lines.</li>
+		<li>Press T or Shift+T to move between detected tables.</li>
+		<li>Use NVDA's table navigation commands to move between table cells.</li>
+		<li>Press L or I to move to detected lists or list items.</li>
+		<li>Press Escape or activate Close to return to the terminal.</li>
+	</ul>
+	<h2>Table detection</h2>
+	<p>
+		The add-on recognizes common PowerShell Format-Table output, pipe-delimited
+		tables, and tables that use Unicode vertical borders. Output that cannot be
+		classified safely remains preformatted. Blank-only terminal rows are removed.
+	</p>
+	<h2>Notes</h2>
+	<p>
+		The view is a snapshot. Close it and press NVDA+Shift+V again after terminal
+		output changes. Only text exposed by the terminal's accessibility interface
+		can be included. The feature is disabled on secure screens.
+	</p>
+	<h2>Updates</h2>
+	<p>
+		AccessibleTerminalViewer checks GitHub Releases shortly after NVDA starts.
+		When a newer version is available, the add-on offers to download, verify,
+		and install it. You can also assign a gesture to Check
+		AccessibleTerminalViewer for updates in NVDA's Input Gestures dialog.
+	</p>
+</body>
+</html>

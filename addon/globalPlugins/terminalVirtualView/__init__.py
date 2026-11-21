@@ -1,0 +1,165 @@
+# Copyright (C) 2026 Ibrahim Badawy
+# This file is covered by the GNU General Public License, version 2 or later.
+
+import addonHandler
+import api
+import core
+import globalPluginHandler
+import globalVars
+from logHandler import log
+import scriptHandler
+import textInfos
+import ui
+
+from .semantic import buildDocument
+from .updater import UpdateManager
+
+addonHandler.initTranslation()
+
+try:
+	from globalCommands import SCRCAT_TEXTREVIEW
+except ImportError:
+	SCRCAT_TEXTREVIEW = None
+
+
+_TERMINAL_APP_NAMES = {
+	"cmd",
+	"conhost",
+	"openconsole",
+	"powershell",
+	"pwsh",
+	"windowsterminal",
+}
+_TERMINAL_WINDOW_CLASSES = {
+	"consolewindowclass",
+	"termcontrol",
+	"cascadiahostingwindow",
+}
+_MAX_OBJECTS_TO_SEARCH = 300
+
+
+def _objectIdentity(obj):
+	appModule = getattr(obj, "appModule", None)
+	appName = (getattr(appModule, "appName", "") or "").lower()
+	windowClassName = (getattr(obj, "windowClassName", "") or "").lower()
+	return appName, windowClassName
+
+
+def _isTerminalObject(obj):
+	appName, windowClassName = _objectIdentity(obj)
+	return appName in _TERMINAL_APP_NAMES or windowClassName in _TERMINAL_WINDOW_CLASSES
+
+
+def _iterDescendants(root):
+	queue = [root]
+	seen = set()
+	while queue and len(seen) < _MAX_OBJECTS_TO_SEARCH:
+		obj = queue.pop(0)
+		identity = id(obj)
+		if identity in seen:
+			continue
+		seen.add(identity)
+		yield obj
+		child = getattr(obj, "simpleFirstChild", None)
+		while child:
+			queue.append(child)
+			child = getattr(child, "simpleNext", None)
+
+
+def _getText(obj):
+	try:
+		info = obj.makeTextInfo(textInfos.POSITION_FIRST)
+		info.expand(textInfos.UNIT_STORY)
+		text = getattr(info, "clipboardText", None)
+		if text is None:
+			text = info.text
+	except (AttributeError, NotImplementedError, RuntimeError):
+		log.debugWarning("Terminal object does not expose readable text", exc_info=True)
+		return ""
+	except Exception:
+		log.error("Failed to retrieve text from a terminal object", exc_info=True)
+		return ""
+	return (text or "").replace("\0", " ").rstrip()
+
+
+def _captureTerminal():
+	focus = api.getFocusObject()
+	foreground = api.getForegroundObject()
+	ancestors = list(api.getFocusAncestors())
+	context = [focus, *reversed(ancestors), foreground]
+	if not any(_isTerminalObject(obj) for obj in context):
+		return None, None
+
+	candidates = []
+	seen = set()
+	for obj in context:
+		if _isTerminalObject(obj) and id(obj) not in seen:
+			seen.add(id(obj))
+			candidates.append(obj)
+	for obj in _iterDescendants(foreground):
+		if _isTerminalObject(obj) and id(obj) not in seen:
+			seen.add(id(obj))
+			candidates.append(obj)
+
+	bestText = ""
+	for obj in candidates:
+		text = _getText(obj)
+		if len(text) > len(bestText):
+			bestText = text
+
+	title = getattr(foreground, "name", None) or _("Terminal")
+	return bestText, title
+
+
+def _trustedHtml(html):
+	return html
+
+
+class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+	scriptCategory = SCRCAT_TEXTREVIEW
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._updateManager = UpdateManager()
+		self._updateTimer = core.callLater(
+			10000,
+			self._updateManager.check,
+			automatic=True,
+		)
+
+	@scriptHandler.script(
+		# Translators: Description of the command that opens terminal content in browse mode.
+		description=_("Open terminal content as a structured virtual document"),
+		gesture="kb:nvda+shift+v",
+	)
+	def script_openTerminalVirtualView(self, gesture):
+		text, title = _captureTerminal()
+		if text is None:
+			ui.message(
+				_("AccessibleTerminalViewer is available only in Command Prompt, PowerShell, and Windows Terminal."),
+			)
+			return
+		if not text:
+			ui.message(_("No terminal text is available."))
+			return
+
+		document = buildDocument(text, title)
+		ui.browseableMessage(
+			message=document,
+			title=_("AccessibleTerminalViewer: {title}").format(title=title),
+			isHtml=True,
+			closeButton=True,
+			copyButton=True,
+			sanitizeHtmlFunc=_trustedHtml,
+		)
+
+	@scriptHandler.script(
+		# Translators: Description of the command that checks GitHub for add-on updates.
+		description=_("Check AccessibleTerminalViewer for updates"),
+	)
+	def script_checkForUpdates(self, gesture):
+		self._updateManager.check()
+
+
+if globalVars.appArgs.secure:
+	GlobalPlugin = globalPluginHandler.GlobalPlugin
