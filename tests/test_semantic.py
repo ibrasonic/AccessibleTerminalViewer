@@ -71,7 +71,7 @@ class BuildDocumentTests(unittest.TestCase):
 
 	def test_blank_lines_are_removed(self):
 		document = semantic.buildDocument(
-			"\n\nC:\\> echo ready\n\n\nready\n   \n\n",
+			"\n\u2800\u2800\nC:\\> echo ready\u00a0\u00a0\n\u200b\nready\n   \n\n",
 			"Command Prompt",
 		)
 
@@ -79,6 +79,9 @@ class BuildDocumentTests(unittest.TestCase):
 		self.assertIn("<pre>ready</pre>", document)
 		self.assertNotIn("<pre>\n", document)
 		self.assertNotIn("\n\n", document)
+		self.assertNotIn("\u2800", document)
+		self.assertNotIn("\u200b", document)
+		self.assertNotIn("\u00a0", document)
 
 
 if __name__ == "__main__":

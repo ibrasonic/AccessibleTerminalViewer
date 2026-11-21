@@ -3,6 +3,7 @@
 
 from html import escape
 import re
+import unicodedata
 
 
 _ANSI_SEQUENCE = re.compile(
@@ -21,11 +22,25 @@ _NUMBERED_LIST_ITEM = re.compile(r"^\s*\d+[.)]\s+(.+)$")
 _SEPARATOR_CELL = re.compile(r"^\s*:?[=\-─—]{2,}:?\s*$")
 _COLUMN_RUN = re.compile(r"[=\-─—]{2,}")
 _BOX_BORDER = re.compile(r"^[\s┌┬┐├┼┤└┴┘╔╦╗╠╬╣╚╩╝═─━+\-=]+$")
+_BRAILLE_BLANK = "\u2800"
 
 
 def _normalize(text):
 	text = _ANSI_SEQUENCE.sub("", text.replace("\r\n", "\n").replace("\r", "\n"))
 	return text.replace("\0", " ")
+
+
+def _normalizeLine(line):
+	normalized = []
+	for character in line.expandtabs(4):
+		category = unicodedata.category(character)
+		if character == _BRAILLE_BLANK or category.startswith("Z"):
+			normalized.append(" ")
+		elif category in {"Cc", "Cf"}:
+			continue
+		else:
+			normalized.append(character)
+	return "".join(normalized).rstrip()
 
 
 def _isPrompt(line):
@@ -135,12 +150,13 @@ def _renderPreformatted(lines):
 
 def buildDocument(text, title):
 	lines = [
-		line.rstrip()
+		normalizedLine
 		for line in _normalize(text).split("\n")
-		if line.strip()
+		if (normalizedLine := _normalizeLine(line)).strip()
 	]
 	parts = [
 		"<!DOCTYPE html><html><head><meta charset=\"utf-8\">",
+		"<style>h1,h2,pre,table,ul,ol{margin-top:0;margin-bottom:0}</style>",
 		"<title>",
 		escape(title),
 		"</title></head><body><main>",

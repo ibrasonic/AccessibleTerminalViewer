@@ -1,6 +1,8 @@
 # Copyright (C) 2026 Ibrahim Badawy
 # This file is covered by the GNU General Public License, version 2 or later.
 
+from collections import deque
+
 import addonHandler
 import api
 import core
@@ -35,7 +37,11 @@ _TERMINAL_WINDOW_CLASSES = {
 	"termcontrol",
 	"cascadiahostingwindow",
 }
-_MAX_OBJECTS_TO_SEARCH = 300
+_MAX_OBJECTS_TO_SEARCH = 100
+_TERMINAL_TEXT_WINDOW_CLASSES = {
+	"consolewindowclass",
+	"termcontrol",
+}
 
 
 def _objectIdentity(obj):
@@ -51,10 +57,10 @@ def _isTerminalObject(obj):
 
 
 def _iterDescendants(root):
-	queue = [root]
+	queue = deque([root])
 	seen = set()
 	while queue and len(seen) < _MAX_OBJECTS_TO_SEARCH:
-		obj = queue.pop(0)
+		obj = queue.popleft()
 		identity = id(obj)
 		if identity in seen:
 			continue
@@ -90,25 +96,34 @@ def _captureTerminal():
 	if not any(_isTerminalObject(obj) for obj in context):
 		return None, None
 
-	candidates = []
 	seen = set()
+	candidates = []
 	for obj in context:
-		if _isTerminalObject(obj) and id(obj) not in seen:
+		_, windowClassName = _objectIdentity(obj)
+		if windowClassName in _TERMINAL_TEXT_WINDOW_CLASSES and id(obj) not in seen:
 			seen.add(id(obj))
 			candidates.append(obj)
-	for obj in _iterDescendants(foreground):
-		if _isTerminalObject(obj) and id(obj) not in seen:
-			seen.add(id(obj))
-			candidates.append(obj)
+	if not candidates:
+		for obj in _iterDescendants(foreground):
+			_, windowClassName = _objectIdentity(obj)
+			if windowClassName in _TERMINAL_TEXT_WINDOW_CLASSES and id(obj) not in seen:
+				seen.add(id(obj))
+				candidates.append(obj)
+				break
+	if not candidates:
+		for obj in context:
+			if _isTerminalObject(obj) and id(obj) not in seen:
+				seen.add(id(obj))
+				candidates.append(obj)
 
-	bestText = ""
 	for obj in candidates:
 		text = _getText(obj)
-		if len(text) > len(bestText):
-			bestText = text
+		if text:
+			title = getattr(foreground, "name", None) or _("Terminal")
+			return text, title
 
 	title = getattr(foreground, "name", None) or _("Terminal")
-	return bestText, title
+	return "", title
 
 
 def _trustedHtml(html):
