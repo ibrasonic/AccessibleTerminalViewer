@@ -13,6 +13,7 @@ New-Item -ItemType Directory -Path $staging | Out-Null
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $projectRoot "addon\manifest.ini") -Destination $staging
+Copy-Item -LiteralPath (Join-Path $projectRoot "addon\installTasks.py") -Destination $staging
 Copy-Item -LiteralPath (Join-Path $projectRoot "addon\globalPlugins") -Destination $staging -Recurse
 Copy-Item -LiteralPath (Join-Path $projectRoot "doc") -Destination $staging -Recurse
 Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination $staging

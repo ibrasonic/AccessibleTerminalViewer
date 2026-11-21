@@ -10,6 +10,10 @@ preformatted, while blank-only terminal rows are removed.
 
 The add-on is last tested with **NVDA 2026.3.1**.
 
+Installing AccessibleTerminalViewer automatically schedules the obsolete
+`terminalVirtualView` add-on for removal. Restart NVDA after installation so
+only the current add-on handles NVDA+Shift+V.
+
 ## Updates
 
 AccessibleTerminalViewer checks the latest public GitHub Release shortly after
