@@ -118,7 +118,7 @@ def _captureTerminal():
 				seen.add(id(obj))
 				candidates.append(obj)
 
-	for obj in reversed(candidates):
+	for obj in candidates:
 		text = _getText(obj)
 		if text:
 			title = getattr(foreground, "name", None) or _("Terminal")
