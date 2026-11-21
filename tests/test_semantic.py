@@ -83,6 +83,17 @@ class BuildDocumentTests(unittest.TestCase):
 		self.assertNotIn("\u200b", document)
 		self.assertNotIn("\u00a0", document)
 
+	def test_nonblank_content_and_format_characters_are_preserved(self):
+		document = semantic.buildDocument(
+			"first value\nArabic \u200ftext\nemoji \U0001f469\u200d\U0001f4bb\nlast value",
+			"Terminal",
+		)
+
+		self.assertIn("first value", document)
+		self.assertIn("Arabic \u200ftext", document)
+		self.assertIn("emoji \U0001f469\u200d\U0001f4bb", document)
+		self.assertIn("last value", document)
+
 
 if __name__ == "__main__":
 	unittest.main()

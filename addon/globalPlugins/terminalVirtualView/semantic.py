@@ -36,11 +36,20 @@ def _normalizeLine(line):
 		category = unicodedata.category(character)
 		if character == _BRAILLE_BLANK or category.startswith("Z"):
 			normalized.append(" ")
-		elif category in {"Cc", "Cf"}:
+		elif category == "Cc":
 			continue
 		else:
 			normalized.append(character)
 	return "".join(normalized).rstrip()
+
+
+def _hasVisibleContent(line):
+	return any(
+		character != _BRAILLE_BLANK
+		and not character.isspace()
+		and not unicodedata.category(character).startswith(("C", "Z"))
+		for character in line
+	)
 
 
 def _isPrompt(line):
@@ -152,7 +161,7 @@ def buildDocument(text, title):
 	lines = [
 		normalizedLine
 		for line in _normalize(text).split("\n")
-		if (normalizedLine := _normalizeLine(line)).strip()
+		if _hasVisibleContent(normalizedLine := _normalizeLine(line))
 	]
 	parts = [
 		"<!DOCTYPE html><html><head><meta charset=\"utf-8\">",

@@ -2,6 +2,7 @@
 # This file is covered by the GNU General Public License, version 2 or later.
 
 from collections import deque
+import threading
 
 import addonHandler
 import api
@@ -12,6 +13,7 @@ from logHandler import log
 import scriptHandler
 import textInfos
 import ui
+import wx
 
 from .semantic import buildDocument
 from .updater import UpdateManager
@@ -116,7 +118,7 @@ def _captureTerminal():
 				seen.add(id(obj))
 				candidates.append(obj)
 
-	for obj in candidates:
+	for obj in reversed(candidates):
 		text = _getText(obj)
 		if text:
 			title = getattr(foreground, "name", None) or _("Terminal")
@@ -136,6 +138,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._updateManager = UpdateManager()
+		self._buildingView = False
 		self._updateTimer = core.callLater(
 			10000,
 			self._updateManager.check,
@@ -158,7 +161,33 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			ui.message(_("No terminal text is available."))
 			return
 
-		document = buildDocument(text, title)
+		if self._buildingView:
+			ui.message(_("The terminal virtual document is still being prepared."))
+			return
+		self._buildingView = True
+		ui.message(_("Preparing the complete terminal virtual document."))
+		threading.Thread(
+			target=self._buildDocument,
+			args=(text, title),
+			name="AccessibleTerminalViewerDocumentBuilder",
+			daemon=True,
+		).start()
+
+	def _buildDocument(self, text, title):
+		try:
+			document = buildDocument(text, title)
+		except Exception:
+			log.error("Unable to build the terminal virtual document", exc_info=True)
+			wx.CallAfter(self._documentBuildFailed)
+			return
+		wx.CallAfter(self._showDocument, document, title)
+
+	def _documentBuildFailed(self):
+		self._buildingView = False
+		ui.message(_("The terminal virtual document could not be created."))
+
+	def _showDocument(self, document, title):
+		self._buildingView = False
 		ui.browseableMessage(
 			message=document,
 			title=_("AccessibleTerminalViewer: {title}").format(title=title),
