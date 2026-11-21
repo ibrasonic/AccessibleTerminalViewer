@@ -28,6 +28,18 @@ class BuildDocumentTests(unittest.TestCase):
 		self.assertIn("&lt;ready&gt;", document)
 		self.assertNotIn("<ready>", document)
 
+	def test_cmd_prompts_without_space_after_prompt_become_headings(self):
+		document = semantic.buildDocument(
+			"C:\\Users\\t-ibadawy>dir\n"
+			"Directory of C:\\Users\\t-ibadawy\n"
+			"C:\\Users\\t-ibadawy>pwd\n"
+			"'pwd' is not recognized",
+			"Command Prompt",
+		)
+
+		self.assertIn("<h2>C:\\Users\\t-ibadawy&gt;dir</h2>", document)
+		self.assertIn("<h2>C:\\Users\\t-ibadawy&gt;pwd</h2>", document)
+
 	def test_powershell_fixed_width_output_becomes_table(self):
 		document = semantic.buildDocument(
 			"PS C:\\> Get-Process\n"
